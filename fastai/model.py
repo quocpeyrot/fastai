@@ -105,6 +105,7 @@ def fit(model, data, n_epochs, opt, crit, metrics=None, callbacks=None, stepper=
     validate_skip = kwargs.pop('validate_skip', 0)
     test_metrics = kwargs.pop('test_metrics', [])
     test_period = kwargs.pop('test_period', 1)
+    test_skip = kwargs.pop('test_skip', 0)
     metrics = metrics or []
     callbacks = callbacks or []
     avg_mom=0.98
@@ -162,7 +163,7 @@ def fit(model, data, n_epochs, opt, crit, metrics=None, callbacks=None, stepper=
 
         if not all_val:
             vals = validate(model_stepper, cur_data.val_dl, metrics, epoch, seq_first=seq_first, validate_skip = validate_skip)
-            test_vals = test(model_stepper, cur_data.test_dl, test_metrics, epoch, test_period)
+            test_vals = test(model_stepper, cur_data.test_dl, test_metrics, epoch, test_period, test_skip)
             vals += test_vals
             stop=False
             for cb in callbacks: stop = stop or cb.on_epoch_end(vals)
@@ -244,8 +245,8 @@ def validate(stepper, dl, metrics, epoch, seq_first=False, validate_skip = 0):
             res.append([f(preds.data, y.data) for f in metrics])
     return [np.average(loss, 0, weights=batch_cnts)] + list(np.average(np.stack(res), 0, weights=batch_cnts))
 
-def test(stepper, dl, metrics, epoch, test_period):
-    if (epoch + 1) % test_period != 0: return [float('nan')] * len(metrics)
+def test(stepper, dl, metrics, epoch, test_period, test_skip):
+    if epoch < test_skip or (epoch + 1) % test_period != 0: return [float('nan')] * len(metrics)
     if dl == None or len(metrics) == 0: return [float('nan')] * len(metrics)
     stepper.reset(False)
     with no_grad_context():
